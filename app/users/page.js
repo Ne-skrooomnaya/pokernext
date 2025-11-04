@@ -1,61 +1,111 @@
-// app/rating/page.js
-'use client'; // Этот компонент будет клиентским
+'use client';
 
 import React, { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
-export default function UserPage() {
-  const [userData, setUserData] = useState(null); // Данные текущего пользователя
-  const [loading, setLoading] = useState(true);
-  const router = useRouter();
+// Импорт стилей
+import pageStyles from './page.module.css'; // Для общего контейнера страницы и кнопки выхода
+import logoStyles from './logo.module.css'; // Для контейнера логотипа
+import topSectionStyles from './top-section.module.css'; // Для верхнего блока и его элементов
+import bottomSectionStyles from './bottom-section.module.css'; // Для нижнего блока и его элементов
 
-  useEffect(() => {
-    // Пытаемся получить данные пользователя, если они еще не загружены
-    // В реальном приложении, возможно, вам придется делать fetch на /api/auth/me
-    // или использовать контекст, чтобы передать данные пользователя
-    // Здесь мы предполагаем, что данные пользователя уже есть в хуке useTelegram
-    // или мы их получаем каким-то другим способом.
-    // Для примера, давайте сделаем fetch на API, который вернет текущего пользователя
-    const fetchUser = async () => {
-      try {
-        const response = await fetch('/api/auth/me'); // Создайте этот API-маршрут
-        if (response.ok) {
-          const data = await response.json();
-          setUserData(data);
-        } else if (response.status === 401) {
-          // Если нет авторизации, перенаправляем на логин
-          router.push('/login'); // или app/page.js, если логин там
-        }
-      } catch (error) {
-        console.error("Failed to fetch user data:", error);
-        router.push('/login');
-      } finally {
-        setLoading(false);
+// Функция для загрузки скрипта Telegram Web App
+const loadTelegramWebAppSDK = () => {
+  return new Promise((resolve, reject) => {
+    const scriptId = 'telegram-web-app-sdk';
+    if (document.getElementById(scriptId)) {
+      resolve(window.Telegram.WebApp);
+      return;
+    }
+    const script = document.createElement('script');
+    script.id = scriptId;
+    script.src = 'https://telegram.org/js/telegram-web-app.js';
+    script.onload = () => {
+      if (window.Telegram && window.Telegram.WebApp) {
+        resolve(window.Telegram.WebApp);
+      } else {
+        reject(new Error('Telegram Web App SDK not loaded correctly'));
       }
     };
+    script.onerror = reject;
+    document.body.appendChild(script);
+  });
+};
 
-    fetchUser();
-  }, [router]);
+const UsersPage = () => {
+  const [tg, setTg] = useState(null);
 
-  if (loading) {
-    return <div>Загрузка данных пользователя...</div>;
-  }
+  useEffect(() => {
+    loadTelegramWebAppSDK()
+      .then((tgInstance) => {
+        setTg(tgInstance);
+        tgInstance.ready();
+        tgInstance.expand();
+      })
+      .catch((error) => {
+        console.error('Error loading Telegram Web App SDK:', error);
+      });
+  }, []);
 
-  if (!userData) {
-    // Если произошла ошибка или пользователь не найден, перенаправляем
-    router.push('/login'); // или app/page.js
-    return null; // Ничего не рендерим, пока идет перенаправление
-  }
+  const handleLogout = () => {
+    if (tg) {
+      tg.close();
+    } else {
+      alert('Telegram Web App SDK не инициализирован. Невозможно выйти.');
+    }
+  };
 
   return (
-    <div>
-      <h1>Рейтинг</h1>
-      <p>Добро пожаловать, {userData.firstName || userData.username}!</p>
-      {/* Здесь будет ваш список рейтинга */}
-      <ul>
-        <li>Игрок 1: 100 очков</li>
-        <li>Игрок 2: 90 очков</li>
-      </ul>
+    <div className={pageStyles.pageContainer}> {/* Используем класс для всего контейнера страницы */}
+
+      {/* Логотип */}
+      <div className={logoStyles.logoContainer}>
+        <img src="/images/logo.svg" alt="Poker Logo" className={logoStyles.logoImage} />
+      </div>
+
+      {/* Верхний блок */}
+      <div className={topSectionStyles.topSection}>
+        <div className={topSectionStyles.topSectionImg}>
+          {/* Используем img для SVG. Путь к файлу в public/images */}
+          <img src="/images/chip.svg" alt="Poker Chip" />
+        </div>
+        <div className={topSectionStyles.topButtons}>
+          <Link href="/rating" passHref>
+            <button className={topSectionStyles.topButton}>Рейтинг</button>
+          </Link>
+          <Link href="/race" passHref>
+            <button className={topSectionStyles.topButton}>Гонка месяца</button>
+          </Link>
+          <Link href="/past_games" passHref>
+            <button className={topSectionStyles.topButton}>Прошедшие игры</button>
+          </Link>
+        </div>
+      </div>
+
+      {/* Нижний блок */}
+      <div className={bottomSectionStyles.bottomSection}>
+        <Link href="/menu" passHref>
+          <button className={bottomSectionStyles.bottomSectionButton}>Меню</button>
+        </Link>
+        <Link href="/tea" passHref>
+          <button className={bottomSectionStyles.bottomSectionButton}>Чайная карта</button>
+        </Link>
+        <Link href="/parkour" passHref>
+          <button className={bottomSectionStyles.bottomSectionButton}>Паркур</button>
+        </Link>
+        <Link href="/bar_map" passHref>
+          <button className={bottomSectionStyles.bottomSectionButton}>Карта бара</button>
+        </Link>
+      </div>
+
+      {/* Кнопка "Выйти" */}
+      {tg && (
+        <button onClick={handleLogout} className={pageStyles.logoutButton}>
+          Выйти
+        </button>
+      )}
     </div>
   );
-}
+};
+
+export default UsersPage;
