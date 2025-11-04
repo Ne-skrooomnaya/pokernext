@@ -1,110 +1,71 @@
 // app/hooks/useTelegram.js (или lib/hooks/useTelegram.js)
-'use client';
+'use client'; // Указываем, что это клиентский хук
 
 import { useState, useEffect, createContext, useContext, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 
 const TelegramContext = createContext(null);
 
-// --- Заглушка для Telegram Web App API для локальной разработки ---
-const mockTelegramWebApp = {
-  ready: () => console.log('Mock TelegramWebApp: ready() called'),
-  expand: () => console.log('Mock TelegramWebApp: expand() called'),
-  initDataUnsafe: { // Пример данных пользователя Telegram
-    user: {
-      id: 123456789, // Пример Telegram ID
-      is_premium: false,
-      username: 'mock_user',
-      first_name: 'Mock',
-      last_name: 'User',
-    },
-  },
-  // Добавьте другие методы, если они используются в приложении
-};
-
 export const TelegramProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [telegramUser, setTelegramUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
-  const telegramWebAppRef = useRef(null);
+  const telegramWebAppRef = useRef(null); // Реф для хранения объекта Telegram.WebApp
 
   useEffect(() => {
-    let tg = null;
-
+    // Этот код выполняется только в браузере
     if (typeof window !== 'undefined' && window.Telegram && window.Telegram.WebApp) {
-      tg = window.Telegram.WebApp;
-      console.log('Telegram Web App API detected.');
-    } else {
-      // --- Заглушка для локальной разработки ---
-      console.warn('Telegram Web App API not available. Using mock API.');
-      tg = mockTelegramWebApp;
-      // --- Конец заглушки ---
-    }
+      const tg = window.Telegram.WebApp;
+      telegramWebAppRef.current = tg; // Сохраняем объект в реф
 
-    if (tg) {
-      telegramWebAppRef.current = tg;
       tg.ready();
       tg.expand();
 
-      // Используем try-catch на случай, если mockTelegramWebApp тоже может вызвать ошибку
-      try {
-        const initDataUnsafe = tg.initDataUnsafe;
-        if (initDataUnsafe && initDataUnsafe.user) {
-          setTelegramUser(initDataUnsafe.user);
-          // Если мы на локалке и используем mock, не логинимся сразу,
-          // иначе при каждом рефреше страницы будет новый логин.
-          // Логин будет инициирован кнопкой.
-          if (tg === mockTelegramWebApp) {
-             setLoading(false); // Загрузка завершена, показываем кнопки логина
-          } else {
-             // В реальном Telegram, логинимся автоматически
-             loginUser(initDataUnsafe.user);
-          }
-        } else {
-          console.warn("Telegram Web App initDataUnsafe.user is not available.");
-          setLoading(false);
-        }
-      } catch (error) {
-        console.error('Error accessing Telegram Web App data:', error);
-        setLoading(false);
+      const initDataUnsafe = tg.initDataUnsafe;
+
+      if (initDataUnsafe && initDataUnsafe.user) {
+        setTelegramUser(initDataUnsafe.user);
+        // Попытка авторизации при инициализации
+        loginUser(initDataUnsafe.user);
+      } else {
+        // Если данных Telegram нет, но API Telegram доступен
+        console.warn("Telegram Web App initDataUnsafe.user is not available.");
+        setLoading(false); // Загрузка завершена, но без данных пользователя Telegram
       }
     } else {
-      console.error("Telegram Web App API is not available, and mock API is also not functioning.");
-      setLoading(false);
+      // Если window.Telegram.WebApp недоступен (не в Telegram, или ошибка инициализации)
+      console.error("Telegram Web App API is not available.");
+      setLoading(false); // Загрузка завершена, но без доступа к Telegram API
     }
   }, []); // Выполняется один раз при монтировании
 
-  const loginUser = async (userData, role = 'user') => {
+  // Функция для логина пользователя через ваш API
+  const loginUser = async (userData) => {
     setLoading(true);
     try {
-      // На локалке, мы симулируем роль пользователя или админа
-      const payload = {
-        ...userData,
-        role: role, // Добавляем роль в payload
-      };
-
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(userData),
       });
 
       if (!response.ok) {
         const errorData = await response.json();
         console.error('Login API error:', errorData);
         setUser(null);
-        if (router.pathname !== '/login' && router.pathname !== '/') {
-           // Если логин не удался, остаемся на странице и показываем кнопки
-           // router.push('/login'); // или '/app/page.js'
+        // Важно: если логин не удался, возможно, нужно остаться на странице логина
+        // или показать сообщение об ошибке. Перенаправление на /rating здесь может быть преждевременным.
+        if (router.pathname !== '/login' && router.pathname !== '/') { // Проверяем, не на странице логина ли мы
+           router.push('/login'); // или '/app/page.js'
         }
       } else {
         const userDataFromBackend = await response.json();
         setUser(userDataFromBackend);
-        // Перенаправляем на /rating после успешного логина
-        router.push('/users');
+        // Перенаправляем на /rating только после успешного логина и получения данных от бэкенда
+        router.push('/rating');
       }
     } catch (error) {
       console.error('Error during login process:', error);
@@ -114,6 +75,7 @@ export const TelegramProvider = ({ children }) => {
     }
   };
 
+  // Функция для получения текущего пользователя (проверка сессии)
   const fetchCurrentUser = async () => {
     setLoading(true);
     try {
@@ -127,7 +89,7 @@ export const TelegramProvider = ({ children }) => {
         setUser(null);
         setLoading(false);
         // Если пользователь не авторизован, перенаправляем на логин
-        router.push('/'); // Перенаправляем на главную страницу, где будут кнопки логина
+        router.push('/login'); // или '/app/page.js'
       } else {
         console.error('Error fetching current user:', response.status, await response.text());
         setUser(null);
@@ -140,12 +102,13 @@ export const TelegramProvider = ({ children }) => {
     }
   };
 
+  // Добавляем возможность вызывать методы Telegram.WebApp напрямую через хук
   const telegramApi = (method, ...args) => {
     if (telegramWebAppRef.current && typeof telegramWebAppRef.current[method] === 'function') {
       return telegramWebAppRef.current[method](...args);
     } else {
       console.warn(`Telegram Web App method '${method}' is not available or not a function.`);
-      return undefined;
+      return undefined; // или null, в зависимости от ожидаемого возвращаемого значения
     }
   };
 
@@ -155,7 +118,7 @@ export const TelegramProvider = ({ children }) => {
     telegramUser,
     loginUser,
     fetchCurrentUser,
-    telegramApi,
+    telegramApi, // Функция для доступа к другим методам Telegram API
   };
 
   return (
