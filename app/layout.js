@@ -1,26 +1,35 @@
-// app/layout.js
-import './globals.css'; // Подключаем глобальные стили
+    // app/layout.js (или app/page.js)
+    'use client';
 
-export default function RootLayout({ children }) {
-  return (
-    <html lang="en">
-      <body>
-        {/*
-          Для Telegram Web App нужно, чтобы скрипт был доступен.
-          Его можно подключить здесь, либо через Next.js Script компонент,
-          или просто полагаться на то, что он будет передан через WebView.
-          Если вы используете Telegram Web App SDK, возможно, вам потребуется
-          включить его через CDN, если он не встраивается автоматически.
-          Обычно Telegram сам передает нужные скрипты в WebView.
-        */}
-        <header>
-          {/* Ваш заголовок или навигация */}
-        </header>
-        <main>{children}</main>
-        <footer>
-          {/* Ваш футер */}
-        </footer>
-      </body>
-    </html>
-  );
-}
+    import { useEffect } from 'react';
+
+    export default function RootLayout({ children }) {
+      useEffect(() => {
+        // Подключаем скрипт Telegram Web App, если его еще нет
+        if (!document.getElementById('telegram-web-app-sdk')) {
+          const script = document.createElement('script');
+          script.id = 'telegram-web-app-sdk';
+          script.src = 'https://telegram.org/js/telegram-web-app.js';
+          script.async = true;
+          document.body.appendChild(script);
+
+          script.onload = () => {
+            console.log('Telegram Web App SDK loaded.');
+            if (window.Telegram && window.Telegram.WebApps) {
+              window.Telegram.WebApps.ready();
+            }
+          };
+          script.onerror = () => {
+            console.error('Failed to load Telegram Web App SDK.');
+          };
+        }
+      }, []); // Выполняется только один раз при монтировании компонента
+
+      return (
+        <html lang="en">
+          <body>
+            {children}
+          </body>
+        </html>
+      );
+    }
