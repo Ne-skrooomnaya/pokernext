@@ -1,47 +1,57 @@
-    // hooks/useTelegram.js (улучшенный)
-    import { useEffect, useState } from 'react';
-    import SDK from '@twa-dev/sdk'; // Импортируем SDK как объект
+// hooks/useTelegram.js (исправленный)
+import { useEffect, useState } from 'react';
+// import { init, parseInitData } from '@twa-dev/sdk'; // Можно импортировать SDK как объект
+import SDK from '@twa-dev/sdk'; // Используем SDK как объект для доступа ко всем методам
 
-    const useTelegram = () => {
-      const [user, setUser] = useState(null);
-      const [tg, setTg] = useState(null);
+const useTelegram = () => {
+  const [user, setUser] = useState(null);
+  const [tg, setTg] = useState(null);
 
-      useEffect(() => {
-        const initializeTelegram = async () => {
-          // Проверяем, что код выполняется в браузере и Telegram Web App SDK доступен
-          if (typeof window !== 'undefined' && window.Telegram && window.Telegram.WebApp) {
-            try {
-              // Используем SDK.init()
-              await SDK.init();
+  useEffect(() => {
+    const initializeTelegram = async () => {
+      // Проверяем, что код выполняется в браузере и Telegram Web App SDK доступен
+      if (typeof window !== 'undefined' && window.Telegram && window.Telegram.WebApp) {
+        try {
+          // Инициализация SDK. SDK.init() асинхронный.
+          await SDK.init(); // Убедимся, что await есть
 
-              const tgInstance = window.Telegram.WebApp;
-              setTg(tgInstance);
+          const tgInstance = window.Telegram.WebApp; // Теперь window.Telegram.WebApp точно существует
+          setTg(tgInstance); // Сохраняем экземпляр
 
-              if (tgInstance.initData) {
-                // Используем SDK.parseInitData()
-                const initData = SDK.parseInitData(tgInstance.initData);
-                setUser(initData.user);
-                console.log('Telegram User:', initData.user);
-              } else {
-                console.warn('No initData found. Ensure the app is opened via Telegram.');
-              }
-
-              // Убеждаемся, что Web App готов.
-              tgInstance.ready();
-              console.log('Telegram Web App SDK initialized and ready.');
-
-            } catch (error) {
-              console.error('Error initializing Telegram SDK:', error);
-            }
+          // Парсим initData, если он есть
+          if (tgInstance.initData) {
+            // Используем SDK.parseInitData, если импортировали SDK как объект
+            const initData = SDK.parseInitData(tgInstance.initData);
+            setUser(initData.user);
+            console.log('Telegram User:', initData.user);
           } else {
-            console.warn('Telegram Web App SDK not available in this environment or not loaded.');
+            console.warn('No initData found. Ensure the app is opened via Telegram.');
+            // Если initData нет, user останется null. Это нормально, если вы все равно хотите работать.
+            // Но для авторизации это проблема.
           }
-        };
 
-        initializeTelegram();
-      }, []);
+          // Убеждаемся, что Web App готов.
+          tgInstance.ready();
+          console.log('Telegram Web App SDK initialized and ready.');
 
-      return { tg, user };
+        } catch (error) {
+          console.error('Error initializing Telegram SDK:', error);
+          // При ошибке инициализации, tg и user останутся null.
+          // Возможно, стоит установить tg в null, чтобы явно показать, что SDK не работает.
+          setTg(null);
+          setUser(null);
+        }
+      } else {
+        // Если код выполняется не в браузере или Telegram Web App SDK не загружен
+        console.warn('Telegram Web App SDK not available in this environment or not loaded.');
+        // tg и user останутся null.
+      }
     };
 
-    export default useTelegram;
+    initializeTelegram();
+  }, []); // Пустой массив зависимостей: эффект выполняется один раз при монтировании.
+
+  return { tg, user };
+};
+
+export default useTelegram;
