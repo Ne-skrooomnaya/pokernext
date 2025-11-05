@@ -2,71 +2,87 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-
+import { useTelegram } from '../../hooks/useTelegram'; // Убедитесь, что путь правильный
 // Импорт стилей
 import pageStyles from './page.module.css'; // Для общего контейнера страницы и кнопки выхода
 import logoStyles from './logo.module.css'; // Для контейнера логотипа
 import topSectionStyles from './top-section.module.css'; // Для верхнего блока и его элементов
 import bottomSectionStyles from './bottom-section.module.css'; // Для нижнего блока и его элементов
 
-// Функция для загрузки скрипта Telegram Web App
-const loadTelegramWebAppSDK = () => {
-  return new Promise((resolve, reject) => {
-    const scriptId = 'telegram-web-app-sdk';
-    if (document.getElementById(scriptId)) {
-      resolve(window.Telegram.WebApp);
-      return;
-    }
-    const script = document.createElement('script');
-    script.id = scriptId;
-    script.src = 'https://telegram.org/js/telegram-web-app.js';
-    script.onload = () => {
-      if (window.Telegram && window.Telegram.WebApp) {
-        resolve(window.Telegram.WebApp);
-      } else {
-        reject(new Error('Telegram Web App SDK not loaded correctly'));
-      }
-    };
-    script.onerror = reject;
-    document.body.appendChild(script);
-  });
-};
 
 const UsersPage = () => {
-  const [tg, setTg] = useState(null);
+  const { tg, isLoading, error, closeApp, getInitData } = useTelegram();
+  const [userData, setUserData] = useState(null); // Состояние для хранения данных пользователя с бэкенда
 
   useEffect(() => {
-    loadTelegramWebAppSDK()
-      .then((tgInstance) => {
-        setTg(tgInstance);
-        tgInstance.ready();
-        tgInstance.expand();
-      })
-      .catch((error) => {
-        console.error('Error loading Telegram Web App SDK:', error);
-      });
-  }, []);
-
-  const handleLogout = () => {
-    if (tg) {
-      tg.close();
-    } else {
-      alert('Telegram Web App SDK не инициализирован. Невозможно выйти.');
+    if (error) {
+      // Обработка ошибки инициализации Telegram API (например, показать сообщение пользователю)
+      alert(`Ошибка инициализации Telegram: ${error}`);
+      return;
     }
-  };
+
+    if (tg) {
+      const initData = getInitData(); // Получаем initData
+      console.log('Init Data:', initData); // Для отладки
+
+      if (initData) {
+        // Здесь отправляем initData на ваш бэкенд для аутентификации
+        // Предполагается, что у вас есть API endpoint '/api/auth/telegram'
+        fetch('/api/auth/telegram', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ initData: initData }),
+        })
+          .then(response => {
+            if (!response.ok) {
+              throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+          })
+          .then(data => {
+            console.log('Authentication successful:', data);
+            setUserData(data); // Сохраняем данные пользователя (например, имя, ID из БД)
+            // Теперь вы можете использовать userData для отображения информации
+          })
+          .catch(authError => {
+            console.error('Authentication failed:', authError);
+            // Обработка ошибки аутентификации (например, перенаправление на страницу входа или показ сообщения)
+            alert('Ошибка аутентификации. Пожалуйста, попробуйте снова.');
+          });
+      } else {
+        console.log('initData is not available.');
+        // Возможно, пользователю нужно дать возможность войти другим способом или показать сообщение
+      }
+    }
+  }, [tg, error, getInitData]); // Зависимости: tg, error, getInitData
+
+  // Если идет загрузка Telegram API
+  if (isLoading) {
+    return <div className={pageStyles.loadingScreen}>Загрузка Telegram...</div>;
+  }
+
+  // Если произошла ошибка
+  if (error) {
+    return <div className={pageStyles.errorScreen}>Ошибка: {error}</div>;
+  }
+
+  // Если tg не доступен (несмотря на успешную загрузку, что маловероятно)
+  if (!tg) {
+    return <div className={pageStyles.errorScreen}>Telegram API не удалось инициализировать.</div>;
+  }
+
+  // Отображение, когда все загружено и аутентификация прошла (или обрабатывается)
 
   return (
-    <div className={pageStyles.pageContainer}> {/* Используем класс для всего контейнера страницы */}
-
-      {/* Логотип */}
+    <div className={pageStyles.pageContainer}>
       <div className={logoStyles.logoContainer}>
         <img src="/images/logo.svg" alt="Poker Logo" className={logoStyles.logoImage} />
       </div>
 
-      {/* Верхний блок */}
       <div className={topSectionStyles.topSection}>
         <div className={topSectionStyles.topSectionImg}>
-          {/* Используем img для SVG. Путь к файлу в public/images */}
           <img src="/images/chip.svg" alt="Poker Chip" />
         </div>
         <div className={topSectionStyles.topButtons}>
@@ -82,7 +98,6 @@ const UsersPage = () => {
         </div>
       </div>
 
-      {/* Нижний блок */}
       <div className={bottomSectionStyles.bottomSection}>
         <Link href="/menu" passHref>
           <button className={bottomSectionStyles.bottomSectionButton}>Меню</button>
@@ -98,12 +113,10 @@ const UsersPage = () => {
         </Link>
       </div>
 
-      {/* Кнопка "Выйти" */}
-      {tg && (
-        <button onClick={handleLogout} className={pageStyles.logoutButton}>
-          Выйти
-        </button>
-      )}
+      {/* Кнопка "Выйти" - теперь использует метод из TelegramProvider */}
+      <button onClick={closeApp} className={pageStyles.logoutButton}>
+        Выйти
+      </button>
     </div>
   );
 };
