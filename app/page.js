@@ -1,48 +1,89 @@
-    // app/page.js
-    'use client';
+/* eslint-disable react-hooks/set-state-in-effect */
+// app/page.js
+'use client';
 
-    import { useEffect } from 'react';
+import React, { useEffect, useState } from 'react'; // Добавим useState
+import useTelegram from '../hooks/useTelegram';
 
-    export default function HomePage() {
-      useEffect(() => {
-        if (!document.getElementById('telegram-web-app-sdk')) {
-          const script = document.createElement('script');
-          script.id = 'telegram-web-app-sdk';
-          script.src = 'https://telegram.org/js/telegram-web-app.js';
-          script.async = true;
-          document.body.appendChild(script);
+export default function HomePage() {
+  const { tg, user } = useTelegram();
+  const [isLoggedIn, setIsLoggedIn] = useState(false); // Состояние для отслеживания успешного логина
+  const [isLoading, setIsLoading] = useState(true); // Состояние для индикации загрузки
 
-          script.onload = () => {
-            console.log('Telegram Web App SDK loaded successfully.');
-            // Попробуйте проверить доступность здесь
-            if (window.Telegram && window.Telegram.WebApps) {
-              console.log('Telegram.WebApps is available!');
-              window.Telegram.WebApps.ready(); // Все еще вызываем ready
-            } else {
-              console.error('Telegram.WebApps is NOT available after SDK loaded.');
-            }
-          };
-          script.onerror = () => {
-            console.error('Failed to load Telegram Web App SDK.');
-          };
+  useEffect(() => {
+    // Этот useEffect выполняется только на клиенте
+    if (user) {
+      console.log('Telegram User Data:', user);
+      setIsLoading(true); // Начинаем загрузку после получения данных пользователя
+
+      fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          telegramId: user.id,
+          username: user.username,
+          firstName: user.first_name,
+          lastName: user.last_name,
+        }),
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.token) {
+          localStorage.setItem('authToken', data.token);
+          console.log('User logged in, token received:', data.token);
+          setIsLoggedIn(true); // Логин успешен
+        } else {
+          console.error('Login failed, no token received:', data);
+          // Обработка ошибки логина
         }
-      }, []);
-
-      return (
-        <div>
-          <h1>Testing Telegram SDK Loading...</h1>
-          <p>Check the console for messages.</p>
-          <p>Username: {user.username || 'N/A'}</p>
-        <div style={{ textAlign: 'center', padding: '20px' }}>
-          <h1>Добро пожаловать!</h1>
-          {!user && !loading && (
-            <button onClick={handleLogin} style={{ padding: '15px 30px', fontSize: '18px' }}>
-              Войти
-            </button>
-          )}
-          {loading && <p>Загрузка...</p>}
-        </div>
-        </div>
-      );
+      })
+      .catch(error => {
+        console.error('Error logging in:', error);
+        // Обработка сетевой ошибки
+      })
+      .finally(() => {
+        setIsLoading(false); // Загрузка завершена (успешно или с ошибкой)
+      });
+    } else {
+      // Если user всё ещё null (например, на этапе первоначальной загрузки или в браузере)
+      setIsLoading(false); // Прекращаем показывать загрузку, если user не получен
     }
+  }, [user, tg]); // Зависимость от user и tg
 
+  // Пока user не определен (т.е. либо на сервере, либо еще не загрузился на клиенте)
+  // или пока идет загрузка после получения user
+  if (isLoading) {
+    return <div>Loading Telegram user data...</div>;
+  }
+
+  // Если user определен и авторизация прошла успешно
+  if (isLoggedIn) {
+    return (
+      <div>
+        <h1>Welcome to the Poker App!</h1>
+        <p>Hello, {user.first_name}!</p>
+        {/* Основной контент вашего приложения */}
+      </div>
+    );
+  }
+
+  // Если user определен, но логин не удался (например, ошибка или нет токена)
+  if (user && !isLoggedIn) {
+    return (
+      <div>
+        <h1>Error</h1>
+        <p>Failed to log in. Please try again.</p>
+      </div>
+    );
+  }
+
+  // Если user не определен (например, открыто не в Telegram Mini App)
+  return (
+    <div>
+      <h1>Welcome to the Poker App!</h1>
+      <p>Please open this app within Telegram to log in.</p>
+    </div>
+  );
+}
