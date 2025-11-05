@@ -1,4 +1,13 @@
 {
+  "name": "your-project-name",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build", 
+    "start": "next start",
+    "lint": "next lint"
+  },
   "dependencies": {
     "@telegram-apps/sdk": "^3.11.8",
     "@twa-dev/sdk": "^8.0.2",
