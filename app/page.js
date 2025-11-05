@@ -1,56 +1,37 @@
-        // app/page.js
-        'use client';
+    // app/page.js
+    'use client';
 
-        import React, { useEffect } from 'react';
-        import useTelegram from '../hooks/useTelegram';
+    import { useEffect } from 'react';
 
-        export default function HomePage() {
-          const { tg, user } = useTelegram(); // Теперь tg и user должны быть определены
+    export default function HomePage() {
+      useEffect(() => {
+        if (!document.getElementById('telegram-web-app-sdk')) {
+          const script = document.createElement('script');
+          script.id = 'telegram-web-app-sdk';
+          script.src = 'https://telegram.org/js/telegram-web-app.js';
+          script.async = true;
+          document.body.appendChild(script);
 
-          useEffect(() => {
-            if (user) { // Этот блок должен теперь выполниться
-              console.log('Telegram User Data:', user); // Добавьте лог для проверки
-              fetch('/api/auth/login', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                  telegramId: user.id,
-                  username: user.username,
-                  firstName: user.first_name,
-                  lastName: user.last_name,
-                }),
-              })
-              .then(response => response.json())
-              .then(data => {
-                if (data.token) {
-                  localStorage.setItem('authToken', data.token);
-                  console.log('User logged in, token received:', data.token);
-                } else {
-                  console.error('Login failed, no token received:', data);
-                }
-              })
-              .catch(error => {
-                console.error('Error logging in:', error);
-              });
+          script.onload = () => {
+            console.log('Telegram Web App SDK loaded successfully.');
+            // Попробуйте проверить доступность здесь
+            if (window.Telegram && window.Telegram.WebApps) {
+              console.log('Telegram.WebApps is available!');
+              window.Telegram.WebApps.ready(); // Все еще вызываем ready
             } else {
-              // Если user всё ещё null, возможно, есть другая проблема.
-              // Но если Telegram Web App API доступен, user должен быть получен.
-              console.log('Waiting for Telegram user data...');
+              console.error('Telegram.WebApps is NOT available after SDK loaded.');
             }
-          }, [user, tg]);
+          };
+          script.onerror = () => {
+            console.error('Failed to load Telegram Web App SDK.');
+          };
+        }
+      }, []);
 
-          // Это сообщение теперь должно исчезнуть, когда user будет получен
-          if (!user) {
-            return <div>Loading Telegram user data...</div>;
-          }
-
-          // Если user получен, показываем что-то другое
-          return (
+      return (
         <div>
-          <h1>Welcome to the Poker App!</h1>
-          <p>Your Telegram ID: {user.id}</p>
+          <h1>Testing Telegram SDK Loading...</h1>
+          <p>Check the console for messages.</p>
           <p>Username: {user.username || 'N/A'}</p>
         <div style={{ textAlign: 'center', padding: '20px' }}>
           <h1>Добро пожаловать!</h1>

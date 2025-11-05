@@ -13,12 +13,13 @@
           script.async = true;
           document.body.appendChild(script);
 
-          script.onload = () => {
-            console.log('Telegram Web App SDK loaded.');
-            if (window.Telegram && window.Telegram.WebApps) {
-              window.Telegram.WebApps.ready();
-            }
-          };
+                  script.onload = () => {
+          console.log('Telegram Web App SDK loaded.');
+          if (window.Telegram && window.Telegram.WebApps) { // Проверяем, что оба свойства есть
+            window.Telegram.WebApps.ready();
+          }
+        };
+
           script.onerror = () => {
             console.error('Failed to load Telegram Web App SDK.');
           };
