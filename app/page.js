@@ -1,7 +1,7 @@
     // app/page.js (пример использования)
     'use client';
 
-    import useTelegram from '@/hooks/useTelegram';
+    import { useTelegram } from '../hooks/useTelegram';
     import { useEffect } from 'react';
     import { useRouter } from 'next/navigation';
 
@@ -12,7 +12,7 @@
       // Перенаправляем, если пользователь уже авторизован
       useEffect(() => {
         if (!loading && user) {
-          router.push('/rating');
+          router.push('/users');
         }
       }, [loading, user, router]);
 
