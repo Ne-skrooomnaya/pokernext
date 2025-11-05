@@ -4,7 +4,6 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import useTelegram from '@/hooks/useTelegram';
-import styles from './page.module.css'; // Предполагается, что у вас есть этот файл
 
 export default function HomePage() {
   const router = useRouter();
@@ -88,19 +87,19 @@ export default function HomePage() {
 
   if (loading) {
     return (
-      <div className={styles.container}>
+      <div >
         <p>Загрузка...</p>
       </div>
     );
   }
 
   return (
-    <div className={styles.container}>
+    <div >
       {!isLoggedIn && user && ( // Если не залогинен, но есть данные пользователя
         <>
           <h1>Добро пожаловать в Poker App!</h1>
           <p>Здравствуйте, {user.first_name}!</p>
-          <button onClick={handleLogin} disabled={loading} className={styles.button}>
+          <button onClick={handleLogin} disabled={loading} >
             Войти
           </button>
         </>

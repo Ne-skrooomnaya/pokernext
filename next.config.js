@@ -1,6 +1,10 @@
     /** @type {import('next').NextConfig} */
     const nextConfig = {
-      // ... другие настройки
+        experimental: {
+    turbo: {
+      enabled: false, // <<< Добавьте эту строку
+    },
+  },
       async rewrites() {
         return [
           {
