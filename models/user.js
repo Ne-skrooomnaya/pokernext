@@ -1,15 +1,31 @@
-    // models/user.js
-    import mongoose from 'mongoose';
+// models/User.js
+import mongoose from 'mongoose';
 
-    const userSchema = new mongoose.Schema({
-      telegramId: { type: Number, required: true, unique: true },
-      username: { type: String, required: true },
-      firstName: String,
-      lastName: String,
-      registrationDate: { type: Date, default: Date.now },
-      // Другие поля, например:
-      // wins: { type: Number, default: 0 },
-      // losses: { type: Number, default: 0 },
-    });
+const UserSchema = new mongoose.Schema({
+  telegramId: {
+    type: Number,
+    required: true,
+    unique: true,
+  },
+  username: {
+    type: String,
+    required: false,
+  },
+  firstName: {
+    type: String,
+    required: false,
+  },
+  lastName: {
+    type: String,
+    required: false,
+  },
+  // Добавьте другие поля, если они есть в вашей модели
+  createdAt: {
+    type: Date,
+    default: Date.now,
+  },
+});
 
-    export default mongoose.models.User || mongoose.model('User', userSchema);
+// Предотвращаем повторное создание модели
+// Это важно для hot-reloading в dev режиме
+export default mongoose.models.User || mongoose.model('User', UserSchema);

@@ -1,31 +1,48 @@
-    // app/page.js (пример использования)
-    'use client';
+       // app/page.js
+    'use client'; // Этот компонент будет клиентским
 
-    import { useTelegram } from '../hooks/useTelegram';
-    import { useEffect } from 'react';
-    import { useRouter } from 'next/navigation';
+    import React, { useEffect } from 'react';
+    import useTelegram from '../hooks/useTelegram';
 
-    function HomePage() {
-      const { user, loading, telegramUser, loginUser } = useTelegram();
-      const router = useRouter();
+    export default function HomePage() {
+      const { tg, user } = useTelegram();
 
-      // Перенаправляем, если пользователь уже авторизован
       useEffect(() => {
-        if (!loading && user) {
-          router.push('/users');
+        if (user) {
+          // Отправляем telegramId на сервер для аутентификации/регистрации
+          fetch('/api/auth/login', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              telegramId: user.id,
+              username: user.username,
+              firstName: user.first_name,
+              lastName: user.last_name,
+            }),
+          })
+          .then(response => response.json())
+          .then(data => {
+            console.log('User logged in:', data);
+            // Здесь вы можете сохранить токен или другую информацию о пользователе
+            // Например, установить cookie или использовать context API
+          })
+          .catch(error => {
+            console.error('Error logging in:', error);
+          });
         }
-      }, [loading, user, router]);
+      }, [user, tg]); // Зависимость от user и tg
 
-      const handleLogin = async () => {
-        if (telegramUser) {
-          await loginUser(telegramUser); // loginUser уже вызывает fetch и перенаправление
-        } else {
-          alert("Данные Telegram недоступны. Пожалуйста, перезапустите приложение.");
-        }
-      };
+      if (!user) {
+        return <div>Loading Telegram user data...</div>;
+      }
 
-      // Отображаем кнопку только если не идет загрузка и нет авторизованного пользователя
       return (
+        <div>
+          <h1>Welcome to the Poker App!</h1>
+          <p>Your Telegram ID: {user.id}</p>
+          <p>Username: {user.username || 'N/A'}</p>
         <div style={{ textAlign: 'center', padding: '20px' }}>
           <h1>Добро пожаловать!</h1>
           {!user && !loading && (
@@ -35,7 +52,7 @@
           )}
           {loading && <p>Загрузка...</p>}
         </div>
+        </div>
       );
     }
 
-    export default HomePage;
