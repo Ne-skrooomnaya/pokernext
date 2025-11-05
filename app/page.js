@@ -3,7 +3,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import useTelegram from '@/hooks/useTelegram';
+import useTelegram from '../hooks/useTelegram';
 
 export default function HomePage() {
   const router = useRouter();
