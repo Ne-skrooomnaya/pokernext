@@ -1,8 +1,8 @@
 // app/api/auth/login/route.js
 import { NextResponse } from 'next/server';
-import dbConnect from '../../../lib/mongodb';
-import User from '../../../models/User';
-import { generateToken } from '../../../lib/jwt';
+import dbConnect from '../../../../lib/mongodb';
+import User from '../../../../models/user';
+import { generateToken } from '../../../../lib/jwt';
 import crypto from 'crypto'; // Встроенный модуль Node.js для криптографии
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
