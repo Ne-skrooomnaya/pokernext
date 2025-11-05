@@ -1,7 +1,7 @@
     // app/api/auth/login/route.js
     import { NextResponse } from 'next/server';
     import dbConnect from '../../../lib/mongodb'; // Путь к вашему файлу подключения к БД
-    import User from '../../../models/User'; // Путь к вашей модели пользователя
+    import User from '../../../../models/user'; // Путь к вашей модели пользователя
 
     export async function POST(request) {
       try {
