@@ -23,10 +23,16 @@
             }),
           })
           .then(response => response.json())
-          .then(data => {
-            console.log('User logged in:', data);
-            // Здесь вы можете сохранить токен или другую информацию о пользователе
-            // Например, установить cookie или использовать context API
+           .then(data => {
+            if (data.token) {
+              // Сохраняем токен в localStorage (или HttpOnly cookie для большей безопасности)
+              localStorage.setItem('authToken', data.token);
+              console.log('User logged in, token received:', data.token);
+              // Теперь можете обновить состояние приложения, чтобы показать контент
+              // или перенаправить пользователя.
+            } else {
+              console.error('Login failed, no token received:', data);
+            }
           })
           .catch(error => {
             console.error('Error logging in:', error);
@@ -37,7 +43,28 @@
       if (!user) {
         return <div>Loading Telegram user data...</div>;
       }
+      const authToken = localStorage.getItem('authToken');
 
+        // Пример вызова защищенного API
+        fetch('/api/protected/some-data', {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${authToken}`, // Отправляем токен
+            // 'X-Auth-Token': authToken // Альтернативный вариант, если middleware настроен иначе
+          },
+        })
+        .then(response => {
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          return response.json();
+        })
+        .then(data => {
+          console.log('Protected data:', data);
+        })
+        .catch(error => {
+          console.error('Error fetching protected data:', error);
+        });
       return (
         <div>
           <h1>Welcome to the Poker App!</h1>
