@@ -1,4 +1,5 @@
 // hooks/useTelegram.js (используйте этот вариант)
+'use client'; // <--- ДОБАВЬТЕ ЭТУ СТРОКУ В САМОМ НАЧАЛЕ ФАЙЛА
 
 import { useEffect, useState, createContext, useContext } from 'react';
 
