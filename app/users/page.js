@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useTelegram } from '../../hooks/useTelegram'; // Убедитесь, что путь правильный
+import useTelegram from '../../hooks/useTelegram'; // Убедитесь, что путь правильный
 // Импорт стилей
 import pageStyles from './page.module.css'; // Для общего контейнера страницы и кнопки выхода
 import logoStyles from './logo.module.css'; // Для контейнера логотипа
