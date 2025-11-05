@@ -1,38 +1,27 @@
 // app/api/auth/me/route.js
 import { NextResponse } from 'next/server';
-// import { verifySession } from '@/lib/auth'; // Ваша функция для проверки сессии/токена
+import dbConnect from '@/lib/mongodb';
+import User from '@/models/user';
 
-export async function GET(request) {
-  // В этом примере мы предполагаем, что у вас есть механизм аутентификации,
-  // который проверяет cookie или заголовок Authorization.
-  // Если вы используете JWT, вам нужно будет его верифицировать.
+export async function POST(req) { // Меняем на POST, чтобы принимать telegramId
+  try {
+    await dbConnect();
+    const { telegramId } = await req.json(); // Получаем telegramId из тела запроса
 
-  // Пример: Получение данных из cookie (если вы устанавливали сессию)
-  // const sessionToken = request.cookies.get('session_token')?.value;
-  // if (!sessionToken) {
-  //   return NextResponse.json({ message: 'Не авторизован' }, { status: 401 });
-  // }
-  // const user = await verifySession(sessionToken); // Ваша функция верификации
+    if (!telegramId) {
+      return NextResponse.json({ success: false, message: 'Telegram ID is required' }, { status: 400 });
+    }
 
-  // Если вы не устанавливаете сессию, то данные пользователя должны быть в `telegramUserData`,
-  // которую вы сохранили при логине. В данном примере, мы можем просто вернуть
-  // данные, которые были получены при логине, если они каким-то образом доступны.
-  // Более надежный способ - использовать JWT и верифицировать его.
+    const user = await User.findOne({ telegramId: telegramId }).select('-__v -password'); // Исключаем поля, которые не нужны
 
-  // Пример с заглушкой, если нет сессии:
-  // Верните пользователя, которого вы получили при логине (если он хранится где-то, например, в глобальном объекте или контексте)
-  // Или, если вы устанавливали JWT, раскомментируйте строки выше.
-  const fakeUser = {
-    id: 'some_mongo_id',
-    telegramId: 123456789,
-    username: 'test_user',
-    firstName: 'Тестовый',
-  };
-
-  if (!fakeUser) { // Замените на реальную проверку
-     return NextResponse.json({ message: 'Не авторизован' }, { status: 401 });
+    if (user) {
+      // Возвращаем данные пользователя из БД
+      return NextResponse.json({ success: true, user: { id: user._id, telegramId: user.telegramId, firstName: user.firstName, lastName: user.lastName, username: user.username } }, { status: 200 });
+    } else {
+      return NextResponse.json({ success: false, message: 'User not found in database' }, { status: 404 });
+    }
+  } catch (error) {
+    console.error('Me API error:', error);
+    return NextResponse.json({ success: false, message: 'Internal server error' }, { status: 500 });
   }
-
-
-  return NextResponse.json(fakeUser);
 }

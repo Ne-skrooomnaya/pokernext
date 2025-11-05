@@ -1,89 +1,119 @@
-/* eslint-disable react-hooks/set-state-in-effect */
 // app/page.js
 'use client';
 
-import React, { useEffect, useState } from 'react'; // Добавим useState
-import useTelegram from '../hooks/useTelegram';
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import useTelegram from '@/hooks/useTelegram';
+import styles from './page.module.css'; // Предполагается, что у вас есть этот файл
 
 export default function HomePage() {
-  const { tg, user } = useTelegram();
-  const [isLoggedIn, setIsLoggedIn] = useState(false); // Состояние для отслеживания успешного логина
-  const [isLoading, setIsLoading] = useState(true); // Состояние для индикации загрузки
+  const router = useRouter();
+  const { user } = useTelegram();
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Этот useEffect выполняется только на клиенте
-    if (user) {
-      console.log('Telegram User Data:', user);
-      setIsLoading(true); // Начинаем загрузку после получения данных пользователя
+    const checkAuth = async () => {
+      if (!user) {
+        setLoading(false);
+        return;
+      }
 
-      fetch('/api/auth/login', {
+      try {
+        const response = await fetch('/api/auth/login', { // API для проверки пользователя
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ telegramId: user.id }),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success) {
+            setIsLoggedIn(true);
+            router.push('/users'); // Перенаправляем на страницу пользователя
+          }
+        }
+      } catch (error) {
+        console.error('Error checking authentication:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (user) {
+      checkAuth();
+    } else {
+      setLoading(false); // Если пользователя нет, тоже перестаем ждать
+    }
+  }, [user, router]); // Зависимость от user и router
+
+  const handleLogin = async () => {
+    if (!user) {
+      alert('Не удалось получить данные Telegram. Откройте приложение через Telegram.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const response = await fetch('/api/auth/telegram', { // API для регистрации/входа
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           telegramId: user.id,
-          username: user.username,
           firstName: user.first_name,
-          lastName: user.last_name,
+          lastName: user.last_name || '',
+          username: user.username || '',
         }),
-      })
-      .then(response => response.json())
-      .then(data => {
-        if (data.token) {
-          localStorage.setItem('authToken', data.token);
-          console.log('User logged in, token received:', data.token);
-          setIsLoggedIn(true); // Логин успешен
-        } else {
-          console.error('Login failed, no token received:', data);
-          // Обработка ошибки логина
-        }
-      })
-      .catch(error => {
-        console.error('Error logging in:', error);
-        // Обработка сетевой ошибки
-      })
-      .finally(() => {
-        setIsLoading(false); // Загрузка завершена (успешно или с ошибкой)
       });
-    } else {
-      // Если user всё ещё null (например, на этапе первоначальной загрузки или в браузере)
-      setIsLoading(false); // Прекращаем показывать загрузку, если user не получен
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        setIsLoggedIn(true);
+        router.push('/users'); // Перенаправляем на страницу пользователя
+      } else {
+        alert(`Ошибка входа: ${data.message || 'Неизвестная ошибка'}`);
+      }
+    } catch (error) {
+      console.error('Error during login:', error);
+      alert('Произошла ошибка при попытке входа. Пожалуйста, попробуйте позже.');
+    } finally {
+      setLoading(false);
     }
-  }, [user, tg]); // Зависимость от user и tg
+  };
 
-  // Пока user не определен (т.е. либо на сервере, либо еще не загрузился на клиенте)
-  // или пока идет загрузка после получения user
-  if (isLoading) {
-    return <div>Loading Telegram user data...</div>;
-  }
-
-  // Если user определен и авторизация прошла успешно
-  if (isLoggedIn) {
+  if (loading) {
     return (
-      <div>
-        <h1>Welcome to the Poker App!</h1>
-        <p>Hello, {user.first_name}!</p>
-        {/* Основной контент вашего приложения */}
+      <div className={styles.container}>
+        <p>Загрузка...</p>
       </div>
     );
   }
 
-  // Если user определен, но логин не удался (например, ошибка или нет токена)
-  if (user && !isLoggedIn) {
-    return (
-      <div>
-        <h1>Error</h1>
-        <p>Failed to log in. Please try again.</p>
-      </div>
-    );
-  }
-
-  // Если user не определен (например, открыто не в Telegram Mini App)
   return (
-    <div>
-      <h1>Welcome to the Poker App!</h1>
-      <p>Please open this app within Telegram to log in.</p>
+    <div className={styles.container}>
+      {!isLoggedIn && user && ( // Если не залогинен, но есть данные пользователя
+        <>
+          <h1>Добро пожаловать в Poker App!</h1>
+          <p>Здравствуйте, {user.first_name}!</p>
+          <button onClick={handleLogin} disabled={loading} className={styles.button}>
+            Войти
+          </button>
+        </>
+      )}
+      {!user && ( // Если нет данных пользователя
+        <>
+          <h1>Добро пожаловать в Poker App!</h1>
+          <p>Пожалуйста, откройте приложение через Telegram.</p>
+        </>
+      )}
+      {isLoggedIn && ( // Если залогинен (на всякий случай, если useEffect не сработал)
+        <p>Вы уже авторизованы. Перенаправление...</p>
+      )}
     </div>
   );
 }

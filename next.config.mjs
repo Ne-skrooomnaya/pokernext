@@ -1,6 +1,36 @@
-/** @type {import('next').NextConfig} */
-const nextConfig = {
-  /* config options here */
-};
+    /** @type {import('next').NextConfig} */
+    const nextConfig = {
+      // ... другие настройки
+      async rewrites() {
+        return [
+          {
+            source: '/api/:path*',
+            destination: `https://poker-2uv1.onrender.com/api/:path*`,
+          },
+        ];
+      },
+      // Для локальной разработки:
+      // async headers() {
+      //   return [
+      //     {
+      //       source: '/(.*)',
+      //       headers: [
+      //         {
+      //           key: 'Access-Control-Allow-Origin',
+      //           value: '*', // Или конкретный домен вашего фронтенда
+      //         },
+      //         {
+      //           key: 'Access-Control-Allow-Methods',
+      //           value: 'GET,OPTIONS,PATCH,DELETE,POST,PUT',
+      //         },
+      //         {
+      //           key: 'Access-Control-Allow-Headers',
+      //           value: 'X-CSRF-Token, Content-Type, Authorization',
+      //         },
+      //       ],
+      //     },
+      //   ];
+      // },
+    };
 
-export default nextConfig;
+    module.exports = nextConfig;

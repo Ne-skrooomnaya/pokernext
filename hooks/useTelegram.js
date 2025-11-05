@@ -1,29 +1,32 @@
-/* eslint-disable react-hooks/set-state-in-effect */
 // hooks/useTelegram.js
 import { useEffect, useState } from 'react';
+import { init, parseInitData, useInitData } from '@twa-dev/sdk'; // Импортируем нужные функции
 
 const useTelegram = () => {
-  const [tg, setTg] = useState(null);
   const [user, setUser] = useState(null);
-  const [isClient, setIsClient] = useState(false); // Флаг, чтобы отслеживать, выполняется ли код на клиенте
+  const [tg, setTg] = useState(null); // Состояние для самого SDK
 
   useEffect(() => {
-    setIsClient(true); // Устанавливаем флаг, что мы на клиенте
-  }, []); // Этот useEffect выполняется только на клиенте
+    const initializeTelegram = async () => {
+      try {
+        await init(); // Инициализируем SDK
+        const tgInstance = window.Telegram.WebApp; // Получаем экземпляр WebApp
+        setTg(tgInstance); // Сохраняем экземпляр
 
-  useEffect(() => {
-    // Выполняем этот useEffect только если мы на клиенте
-    if (isClient) {
-      const TelegramWebApps = window.Telegram?.WebApps; // Используем опциональную цепочку
-      if (TelegramWebApps) {
-        TelegramWebApps.ready(); // Сообщаем Telegram, что приложение готово
-        setTg(TelegramWebApps);
-        setUser(TelegramWebApps.initDataUnsafe.user);
-      } else {
-        console.warn('Telegram Web Apps API not available. Are you running in a Telegram Mini App context?');
+        if (tgInstance.initData) {
+          const initData = parseInitData(tgInstance.initData); // Парсим данные
+          setUser(initData.user); // Получаем данные пользователя
+          console.log('Telegram User:', initData.user);
+        } else {
+          console.warn('No initData found. Ensure the app is opened via Telegram.');
+        }
+      } catch (error) {
+        console.error('Error initializing Telegram SDK:', error);
       }
-    }
-  }, [isClient]); // Зависимость от isClient, чтобы запустить после установки флага
+    };
+
+    initializeTelegram();
+  }, []);
 
   return { tg, user };
 };

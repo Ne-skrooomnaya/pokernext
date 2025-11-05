@@ -1,124 +1,86 @@
+// app/users/page.js
 'use client';
 
-import React, { useEffect, useState } from 'react';
-import Link from 'next/link';
-import useTelegram from '../../hooks/useTelegram'; // Убедитесь, что путь правильный
-// Импорт стилей
-import pageStyles from './page.module.css'; // Для общего контейнера страницы и кнопки выхода
-import logoStyles from './logo.module.css'; // Для контейнера логотипа
-import topSectionStyles from './top-section.module.css'; // Для верхнего блока и его элементов
-import bottomSectionStyles from './bottom-section.module.css'; // Для нижнего блока и его элементов
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import useTelegram from '@/hooks/useTelegram';
 
-
-const UsersPage = () => {
-  const { tg, isLoading, error, closeApp, getInitData } = useTelegram();
-  const [userData, setUserData] = useState(null); // Состояние для хранения данных пользователя с бэкенда
+export default function UsersPage() {
+  const router = useRouter();
+  const { user: telegramUser } = useTelegram(); // Получаем данные пользователя из Telegram
+  const [userData, setUserData] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (error) {
-      // Обработка ошибки инициализации Telegram API (например, показать сообщение пользователю)
-      alert(`Ошибка инициализации Telegram: ${error}`);
-      return;
-    }
+    const fetchUserData = async () => {
+      if (!telegramUser) {
+        setLoading(false);
+        return;
+      }
 
-    if (tg) {
-      const initData = getInitData(); // Получаем initData
-      console.log('Init Data:', initData); // Для отладки
-
-      if (initData) {
-        // Здесь отправляем initData на ваш бэкенд для аутентификации
-        // Предполагается, что у вас есть API endpoint '/api/auth/telegram'
-        fetch('/api/auth/telegram', {
-          method: 'POST',
+      try {
+        // Предполагается, что у вас есть API, который по telegramId или другому идентификатору
+        // возвращает полные данные пользователя из вашей БД
+        const response = await fetch('/api/auth/me', { // Используем ваш существующий API /me
+          method: 'POST', // Или GET, если /me поддерживает GET
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ initData: initData }),
-        })
-          .then(response => {
-            if (!response.ok) {
-              throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            return response.json();
-          })
-          .then(data => {
-            console.log('Authentication successful:', data);
-            setUserData(data); // Сохраняем данные пользователя (например, имя, ID из БД)
-            // Теперь вы можете использовать userData для отображения информации
-          })
-          .catch(authError => {
-            console.error('Authentication failed:', authError);
-            // Обработка ошибки аутентификации (например, перенаправление на страницу входа или показ сообщения)
-            alert('Ошибка аутентификации. Пожалуйста, попробуйте снова.');
-          });
-      } else {
-        console.log('initData is not available.');
-        // Возможно, пользователю нужно дать возможность войти другим способом или показать сообщение
+          body: JSON.stringify({ telegramId: telegramUser.id }), // Или другое поле, которое ожидает /api/auth/me
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.user) {
+            setUserData(data.user);
+          } else {
+            // Если API /me вернул ошибку или пользователя не нашел,
+            // возможно, стоит перенаправить обратно на главную или показать сообщение
+            console.error('Could not fetch user data:', data.message);
+            router.push('/'); // Перенаправляем на главную
+          }
+        } else {
+          console.error('Error fetching user data:', response.status, await response.text());
+          router.push('/'); // Перенаправляем на главную в случае ошибки
+        }
+      } catch (error) {
+        console.error('Error fetching user data:', error);
+        router.push('/'); // Перенаправляем на главную в случае ошибки
+      } finally {
+        setLoading(false);
       }
+    };
+
+    // Проверяем, авторизован ли пользователь через TWA SDK
+    if (telegramUser) {
+      fetchUserData();
+    } else {
+      // Если нет данных пользователя из TWA SDK, перенаправляем на главную
+      // Это защитит от прямого доступа к странице, если приложение открыто не из Telegram
+      router.push('/');
     }
-  }, [tg, error, getInitData]); // Зависимости: tg, error, getInitData
+  }, [telegramUser, router]); // Зависимость от telegramUser и router
 
-  // Если идет загрузка Telegram API
-  if (isLoading) {
-    return <div className={pageStyles.loadingScreen}>Загрузка Telegram...</div>;
+  if (loading) {
+    return (
+      <div style={{ textAlign: 'center', marginTop: '50px' }}>
+        <p>Загрузка данных пользователя...</p>
+      </div>
+    );
   }
 
-  // Если произошла ошибка
-  if (error) {
-    return <div className={pageStyles.errorScreen}>Ошибка: {error}</div>;
+  if (!userData) {
+    // Это может произойти, если пользователь перенаправлен обратно на главную
+    return null;
   }
-
-  // Если tg не доступен (несмотря на успешную загрузку, что маловероятно)
-  if (!tg) {
-    return <div className={pageStyles.errorScreen}>Telegram API не удалось инициализировать.</div>;
-  }
-
-  // Отображение, когда все загружено и аутентификация прошла (или обрабатывается)
 
   return (
-    <div className={pageStyles.pageContainer}>
-      <div className={logoStyles.logoContainer}>
-        <img src="/images/logo.svg" alt="Poker Logo" className={logoStyles.logoImage} />
-      </div>
-
-      <div className={topSectionStyles.topSection}>
-        <div className={topSectionStyles.topSectionImg}>
-          <img src="/images/chip.svg" alt="Poker Chip" />
-        </div>
-        <div className={topSectionStyles.topButtons}>
-          <Link href="/rating" passHref>
-            <button className={topSectionStyles.topButton}>Рейтинг</button>
-          </Link>
-          <Link href="/race" passHref>
-            <button className={topSectionStyles.topButton}>Гонка месяца</button>
-          </Link>
-          <Link href="/past_games" passHref>
-            <button className={topSectionStyles.topButton}>Прошедшие игры</button>
-          </Link>
-        </div>
-      </div>
-
-      <div className={bottomSectionStyles.bottomSection}>
-        <Link href="/menu" passHref>
-          <button className={bottomSectionStyles.bottomSectionButton}>Меню</button>
-        </Link>
-        <Link href="/tea" passHref>
-          <button className={bottomSectionStyles.bottomSectionButton}>Чайная карта</button>
-        </Link>
-        <Link href="/parkour" passHref>
-          <button className={bottomSectionStyles.bottomSectionButton}>Паркур</button>
-        </Link>
-        <Link href="/bar_map" passHref>
-          <button className={bottomSectionStyles.bottomSectionButton}>Карта бара</button>
-        </Link>
-      </div>
-
-      {/* Кнопка "Выйти" - теперь использует метод из TelegramProvider */}
-      <button onClick={closeApp} className={pageStyles.logoutButton}>
-        Выйти
-      </button>
+    <div style={{ padding: '20px' }}>
+      <h1>Главная страница пользователя</h1>
+      <p>Добро пожаловать, {userData.firstName || 'Пользователь'}!</p>
+      <p>Ваш Telegram ID: {userData.telegramId}</p>
+      {/* Здесь будет основной контент для авторизованного пользователя */}
+      <p>Это основная страница вашего приложения.</p>
     </div>
   );
-};
-
-export default UsersPage;
+}
