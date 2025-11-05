@@ -1,28 +1,21 @@
-        // app/ClientLayoutWrapper.js
-        'use client';
+// app/ClientLayoutWrapper.js
+'use client'; // Указывает, что это клиентский компонент
 
-        // import { AuthProvider } from '../hooks/useTelegram'; // Импортируем AuthProvider
-        import { useEffect } from 'react'; // Для логики загрузки Telegram SDK
+import React from 'react';
+import useTelegram from '@/hooks/useTelegram'; // Убедитесь, что путь к хуку правильный
 
-        export default function ClientLayoutWrapper({ children }) {
-          // Логика для загрузки Telegram SDK, которая должна быть на клиенте
-          useEffect(() => {
-            if (typeof window !== 'undefined' && window.Telegram && window.Telegram.WebApp) {
-              try {
-                // init() может быть здесь, если он также зависит от browser API
-                // или вы хотите, чтобы он запускался только на клиенте.
-                // Если init() не обращается к window, его можно оставить в useTelegram
-                window.Telegram.WebApp.ready();
-                console.log('Telegram Web App SDK ready called from ClientLayoutWrapper.');
-              } catch (error) {
-                console.error('Error calling Telegram Web App ready:', error);
-              }
-            } else {
-              console.warn('Telegram Web App SDK not available in this environment for ClientLayoutWrapper.');
-            }
-          }, []);
+function ClientLayoutWrapper({ children }) {
+  // Вызываем хук здесь, чтобы инициализировать Telegram SDK
+  // и сделать его доступным для потомков (если они будут использовать tg или user)
+  const { tg, user } = useTelegram();
 
-          return (
-              {children}
-          );
-        }
+  // Можно добавить здесь отрисовку чего-то, что зависит от tg или user,
+  // но в большинстве случаев достаточно просто вызвать хук, чтобы он выполнил инициализацию.
+
+  console.log('ClientLayoutWrapper - tg:', tg); // Для отладки
+  console.log('ClientLayoutWrapper - user:', user); // Для отладки
+
+  return <>{children}</>; // Просто возвращаем дочерние элементы
+}
+
+export default ClientLayoutWrapper;
