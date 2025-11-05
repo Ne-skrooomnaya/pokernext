@@ -1,71 +1,53 @@
-       // app/page.js
-    'use client'; // Этот компонент будет клиентским
+        // app/page.js
+        'use client';
 
-    import React, { useEffect } from 'react';
-    import useTelegram from '../hooks/useTelegram';
+        import React, { useEffect } from 'react';
+        import useTelegram from '../hooks/useTelegram';
 
-    export default function HomePage() {
-      const { tg, user } = useTelegram();
+        export default function HomePage() {
+          const { tg, user } = useTelegram(); // Теперь tg и user должны быть определены
 
-      useEffect(() => {
-        if (user) {
-          // Отправляем telegramId на сервер для аутентификации/регистрации
-          fetch('/api/auth/login', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              telegramId: user.id,
-              username: user.username,
-              firstName: user.first_name,
-              lastName: user.last_name,
-            }),
-          })
-          .then(response => response.json())
-           .then(data => {
-            if (data.token) {
-              // Сохраняем токен в localStorage (или HttpOnly cookie для большей безопасности)
-              localStorage.setItem('authToken', data.token);
-              console.log('User logged in, token received:', data.token);
-              // Теперь можете обновить состояние приложения, чтобы показать контент
-              // или перенаправить пользователя.
+          useEffect(() => {
+            if (user) { // Этот блок должен теперь выполниться
+              console.log('Telegram User Data:', user); // Добавьте лог для проверки
+              fetch('/api/auth/login', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  telegramId: user.id,
+                  username: user.username,
+                  firstName: user.first_name,
+                  lastName: user.last_name,
+                }),
+              })
+              .then(response => response.json())
+              .then(data => {
+                if (data.token) {
+                  localStorage.setItem('authToken', data.token);
+                  console.log('User logged in, token received:', data.token);
+                } else {
+                  console.error('Login failed, no token received:', data);
+                }
+              })
+              .catch(error => {
+                console.error('Error logging in:', error);
+              });
             } else {
-              console.error('Login failed, no token received:', data);
+              // Если user всё ещё null, возможно, есть другая проблема.
+              // Но если Telegram Web App API доступен, user должен быть получен.
+              console.log('Waiting for Telegram user data...');
             }
-          })
-          .catch(error => {
-            console.error('Error logging in:', error);
-          });
-        }
-      }, [user, tg]); // Зависимость от user и tg
+          }, [user, tg]);
 
-      if (!user) {
-        return <div>Loading Telegram user data...</div>;
-      }
-      const authToken = localStorage.getItem('authToken');
-
-        // Пример вызова защищенного API
-        fetch('/api/protected/some-data', {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${authToken}`, // Отправляем токен
-            // 'X-Auth-Token': authToken // Альтернативный вариант, если middleware настроен иначе
-          },
-        })
-        .then(response => {
-          if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+          // Это сообщение теперь должно исчезнуть, когда user будет получен
+          if (!user) {
+            return <div>Loading Telegram user data...</div>;
           }
-          return response.json();
-        })
-        .then(data => {
-          console.log('Protected data:', data);
-        })
-        .catch(error => {
-          console.error('Error fetching protected data:', error);
-        });
-      return (
+
+          // Если user получен, показываем что-то другое
+          return (
         <div>
           <h1>Welcome to the Poker App!</h1>
           <p>Your Telegram ID: {user.id}</p>
